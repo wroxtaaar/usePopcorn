@@ -4,9 +4,8 @@ import ReactDOM from "react-dom/client";
 // import App from "./App";
 import StarRating from "./components/StarRating";
 
-
 function Test() {
-const [movieating, setMovieRating] = useState(0);
+  const [movieating, setMovieRating] = useState(0);
 
   return (
     <div>
@@ -21,7 +20,10 @@ root.render(
   <React.StrictMode>
     {/* <App /> */}
     {/* <StarRating maxRating = {10} /> */}
-    <StarRating maxRating = {5} messages={['Terrible', 'Bad', 'Okay','Good', 'Amazing']} />
+    <StarRating
+      maxRating={5}
+      messages={["Terrible", "Bad", "Okay", "Good", "Amazing"]}
+    />
     <StarRating size={24} color="red" className="test" defaulRating={3} />
     <Test />
   </React.StrictMode>
