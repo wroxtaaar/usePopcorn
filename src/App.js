@@ -58,7 +58,7 @@ const average = (arr) =>
 const KEY = "8ea62d7e";
 
 export default function App() {
-  const [query, setQuery] = useState("inception");
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +81,8 @@ export default function App() {
   function handleDeletedWatched(id) {
     setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
   }
+
+
 
   /*
   useEffect(function () {
@@ -111,12 +113,17 @@ export default function App() {
   // ----new method
   useEffect(
     function () {
+      const controller = new AbortController();
+
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
           const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            {
+              signal: controller.signal
+            }
           );
 
           if (!res.ok) throw new Error("Something went wrong");
@@ -125,9 +132,14 @@ export default function App() {
           if (data.Response === "False") throw new Error("Movie not found");
 
           setMovies(data.Search);
+          setError("");
+
         } catch (err) {
-          console.error(err.message);
-          setError(err.message);
+          if (err.name === "AbortError") {
+
+            console.error(err.message);
+            setError(err.message);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -139,7 +151,12 @@ export default function App() {
         return;
       }
 
+      handleCloseMovie();
       fetchMovies();
+
+      return function () {
+        controller.abort();
+      }
     },
     [query]
   );
@@ -264,26 +281,7 @@ function Box({ children }) {
   );
 }
 
-// function WatchedBox() {
-//   const [isOpen2, setIsOpen2] = useState(true);
 
-//   return (
-//     <div className="box">
-//       <button
-//         className="btn-toggle"
-//         onClick={() => setIsOpen2((open) => !open)}
-//       >
-//         {isOpen2 ? "–" : "+"}
-//       </button>
-//       {isOpen2 && (
-//         <>
-//           <WatchedSummary watched={watched} />
-//           <WatchedMoviesList watched={watched} />
-//         </>
-//       )}
-//     </div>
-//   )
-// }
 
 function MovieList({ movies, onSelectMovie }) {
   return (
@@ -349,6 +347,24 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     onCloseMovie();
   }
 
+
+  useEffect(
+    function () {
+      function callback(e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+        }
+      }
+
+      document.addEventListener("keydown", callback);
+
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onCloseMovie]
+  );
+
   useEffect(
     function () {
       async function getMovieDetails() {
@@ -364,6 +380,18 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       getMovieDetails();
     },
     [selectedId]
+  );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie | ${title}`;
+
+      return function () {
+        document.title = "usePopcorn";
+      };
+    },
+    [title]
   );
 
   return (
@@ -428,7 +456,9 @@ function WatchedSummary({ watched }) {
   const avgImdbRating = average(watched.map((movie) => movie.imdbRating));
   const avgUserRating = average(watched.map((movie) => movie.userRating));
   const avgRuntime = average(watched.map((movie) => movie.runtime));
-  const avgRuntimeFormatted = `${Math.floor(avgRuntime / 60)} hr ${Math.round(avgRuntime % 60)} min`;
+  const avgRuntimeFormatted = `${Math.floor(avgRuntime / 60)} hr ${Math.round(
+    avgRuntime % 60
+  )} min`;
   return (
     <div className="summary">
       <h2>Movies you watched</h2>
@@ -469,10 +499,12 @@ function WatchedMoviesList({ watched, onDeleteWatched }) {
 }
 
 function WatchedMovie({ movie, onDeleteWatched }) {
-
-  const avgRuntimeFormatted = movie.runtime < 60 
-    ? `${movie.runtime} min` 
-    : `${Math.floor(movie.runtime / 60)} hr ${Math.round(movie.runtime % 60)} min`;
+  const avgRuntimeFormatted =
+    movie.runtime < 60
+      ? `${movie.runtime} min`
+      : `${Math.floor(movie.runtime / 60)} hr ${Math.round(
+          movie.runtime % 60
+        )} min`;
 
   return (
     <li>
